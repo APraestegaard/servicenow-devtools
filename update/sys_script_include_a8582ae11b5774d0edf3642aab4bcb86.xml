@@ -6,11 +6,40 @@
         <caller_access/>
         <client_callable>false</client_callable>
         <description>Returns the DevTools link directory with many useful links for admins and developers.</description>
+        <mobile_callable>false</mobile_callable>
         <name>GetLinkDirectory</name>
+        <sandbox_callable>false</sandbox_callable>
         <script><![CDATA[function GetLinkDirectory()
 {
 	var linkdirectory =
 		{
+			'IDEs':
+			[
+				{
+					title: 'ServiceNow Studio',
+					url: '/now/servicenow-studio/'
+				},
+				{
+					title: 'Classic Studio',
+					url: '$studio.do'
+				},
+				{
+					title: 'Workflow Studio',
+					url: '/now/workflow-studio/'
+				},
+				{
+					title: 'UI Builder',
+					url: '/now/builder/ui/'
+				},
+				{
+					title: 'Service Portal Config',
+					url: '/sp_config'
+				},			
+				{
+					title: 'ATF Test Suites',
+					table: 'sys_atf_test_suite'
+				}	
+			],
 			'Organization':
 			[
 				{
@@ -18,6 +47,9 @@
 				},
 				{
 					table: 'sys_user_group'
+				},
+				{
+					table: 'sys_user_group_type'
 				},
 				{
 					table: 'core_company'
@@ -59,6 +91,12 @@
 					table: 'sys_plugins'
 				},				
 				{
+					table: 'sys_store_app'
+				},				
+				{
+					table: 'sys_app_version'
+				},					
+				{
 					table: 'sys_metadata'
 				},
 				{
@@ -69,9 +107,15 @@
 				},
 				{
 					table: 'sys_remote_update_set'
+				},
+				{
+					table: 'x_snc_devtools_shared_application'
+				},
+				{
+					table: 'x_snc_devtools_dependency'
 				}
 			],
-			'Configuration':
+			'System Properties':
 			[
 				{
 					table: 'sys_properties'
@@ -81,6 +125,24 @@
 				},
 				{
 					table: 'sys_properties_category_m2m'
+				}
+			],
+			'Connections and Credentials':
+			[
+				{
+					table: 'discovery_credentials'
+				},
+				{
+					table: 'sys_connection'
+				},
+				{
+					table: 'sys_alias'
+				}
+			],			
+			'User Preferences':
+			[
+				{
+					table: 'sys_user_preference'
 				}
 			],
 			'Database':
@@ -145,15 +207,16 @@
 					table: 'sys_public'
 				}
 			],
-			'Record Transporter':
+			'Multi Factor Authentication':
 			[
 				{
-					table: 'x_snc_devtools_transporter_package'
-				},
+					table: 'sys_properties',
+					query: 'nameSTARTSWITHglide.authenticate.multifactor'
+				},				
 				{
-					table: 'x_snc_devtools_transporter_record'
+					table: 'user_multifactor_auth'
 				}
-			],
+			],			
 			'Server Scripts':
 			[
 				{
@@ -167,6 +230,9 @@
 				},
 				{
 					table: 'sysauto_script'
+				},
+				{
+					table: 'sys_es_latest_script'
 				}
 			],
 			'Client Scripts':
@@ -184,6 +250,12 @@
 					table: 'sys_ui_policy'
 				}
 			],
+			'SDK/Fluent':
+			[
+				{
+					table: 'sys_module'
+				}
+			],
 			'REST APIs':
 			[
 				{
@@ -194,6 +266,12 @@
 				},
 				{
 					table: 'sys_ws_query_parameter'
+				}
+			],
+			'Processors':
+			[
+				{
+					table: 'sys_processor'
 				}
 			],
 			'Events and Notifications':
@@ -284,6 +362,15 @@
 					table: 'scan_finding'
 				}
 			],			
+			'Generative AI Controller':
+			[
+				{
+					table: 'sys_one_extend_capability'
+				},
+				{
+					table: 'sys_gen_ai_feature_mapping'
+				}				
+			],
 			'Navigation':
 			[
 				{
@@ -293,6 +380,15 @@
 					table: 'sys_app_module'
 				}
 			],
+			'Polaris Navigation':
+			[
+				{
+					table: 'sys_polaris_menu_config'
+				},
+				{
+					table: 'sys_polaris_configurable_menu_item'
+				}
+			],			
 			'UI Pages':
 			[
 				{
@@ -321,6 +417,12 @@
 				},
 				{
 					table: 'sys_ui_element' 
+				},
+				{
+					table: 'sys_ui_related_list' 
+				},
+				{
+					table: 'sys_ui_related_list_entry' 
 				},
 				{
 					table: 'sysrule_view' 
@@ -461,6 +563,15 @@
 					table: 'sp_widget'
 				}
 			],
+			'Record Transporter':
+			[
+				{
+					table: 'x_snc_devtools_transporter_package'
+				},
+				{
+					table: 'x_snc_devtools_transporter_record'
+				}
+			],			
 			'Attachments':
 			[
 				{
@@ -545,6 +656,16 @@
 					table: 'cmdb_rel_type'
 				}				
 			],
+			'CMDB CI ServiceNow Apps':
+			[
+				{
+					table: 'x_snc_devtools_cmdb_ci_appl_servicenow'
+				},
+				{
+					table: 'cmdb_rel_ci',
+					query: 'parent.sys_class_name=x_snc_devtools_cmdb_ci_appl_servicenow'
+				}
+			],				
 			'Contract Management':
 			[
 				{
@@ -642,6 +763,36 @@
 			];
 	}
 
+	if (IsAppInstalled('sn_aia') == true)
+	{
+		linkdirectory['Now Assist AI Agents'] =
+		[
+			{
+				table: 'sn_aia_agent'
+			},
+			{
+				table: 'sn_aia_agent_config'
+			},			
+			{
+				table: 'sn_aia_tool'
+			},			
+			{
+				table: 'sn_aia_agent_tool_m2m'
+			},			
+			{
+				table: 'sn_aia_usecase'
+			},			
+			{
+				table: 'sn_aia_trigger_configuration'
+			},
+			{
+				table: 'sn_aia_team'
+			},			
+			{
+				table: 'sn_aia_team_member'
+			}	
+		];
+	}
 	
 	if (GetPackageVersion('d4ebbe99db140110b652edb305961926') != false)
 	{
@@ -922,7 +1073,7 @@
 	for (var nEP = 0; nEP < eps.length; nEP++)
 	{
 		var ep = eps[nEP];
-		if (IsValidFunction(ep.GetLinkDirectory))
+		if (IsFunction(ep.GetLinkDirectory))
 		{
 			var linkdirectory_new = ep.GetLinkDirectory(linkdirectory);
 			if (GetType(linkdirectory_new) == 'Object')
@@ -939,13 +1090,25 @@
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2021-10-19 17:03:37</sys_created_on>
         <sys_id>a8582ae11b5774d0edf3642aab4bcb86</sys_id>
-        <sys_mod_count>118</sys_mod_count>
+        <sys_mod_count>150</sys_mod_count>
         <sys_name>GetLinkDirectory</sys_name>
-        <sys_package display_value="DevTools WORK IN PROGRESS" source="x_snc_devtools">d689f6901bd38450a89720a8ec4bcbfd</sys_package>
-        <sys_policy>read</sys_policy>
-        <sys_scope display_value="DevTools WORK IN PROGRESS">d689f6901bd38450a89720a8ec4bcbfd</sys_scope>
+        <sys_package display_value="DevTools" source="x_snc_devtools">d689f6901bd38450a89720a8ec4bcbfd</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="DevTools">d689f6901bd38450a89720a8ec4bcbfd</sys_scope>
         <sys_update_name>sys_script_include_a8582ae11b5774d0edf3642aab4bcb86</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2023-11-30 16:33:48</sys_updated_on>
+        <sys_updated_on>2025-08-14 15:54:58</sys_updated_on>
+        <x_snc_devtools_sys_ui_script/>
     </sys_script_include>
+    <sys_es_latest_script action="INSERT_OR_UPDATE">
+        <id>a8582ae11b5774d0edf3642aab4bcb86</id>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2024-10-14 16:06:23</sys_created_on>
+        <sys_id>9f0abcb81b5992106a8db8449b4bcba9</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2024-10-14 16:06:23</sys_updated_on>
+        <table>sys_script_include</table>
+        <use_es_latest>false</use_es_latest>
+    </sys_es_latest_script>
 </record_update>

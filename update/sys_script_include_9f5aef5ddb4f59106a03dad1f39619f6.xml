@@ -6,31 +6,41 @@
         <caller_access/>
         <client_callable>false</client_callable>
         <description>Performs an instance scan on an application using a specific suite.</description>
+        <mobile_callable>false</mobile_callable>
         <name>InstanceScanSuiteOnApp</name>
+        <sandbox_callable>false</sandbox_callable>
         <script><![CDATA[function InstanceScanSuiteOnApp(strSuiteSysId, vApp, bDetailed)
 {
+	var progresstracker = new ProgressTrackerAPI();
+	progresstracker.Start();
+
+	function Error(strMessage)
+	{
+		LogError('InstanceScanSuiteOnApp: '+strMessage);
+		progresstracker.SetResult(null,false,strMessage);
+	}
+
 	if (InstanceScanIsRunning() == true)
 	{
+		Error('Instance Scan is already running!');
 		return false;
 	}
-	
+
 	strSuiteSysId = GetStringValue(strSuiteSysId);
 	if (IsValidSysId(strSuiteSysId) == false)
 	{
+		Error('No scan suite has been specified!');
 		return false;
 	}
 	
 	var grApp = GetAppRecord(vApp);
 	if (IsValidRecord(grApp) == false)
 	{
+		Error('The specified application could not be loaded!');
 		return false;
 	}
-	
-	var nEstimatedSeconds = 60;
-	var progresstracker = new ProgressTrackerAPI();
-	progresstracker.Start(nEstimatedSeconds);
 		
-	var strUrl = GetInstanceURL()+'/api/sn_cicd/instance_scan/suite_scan/'+strSuiteSysId+'/scoped_apps';
+	var strUrl = GetInstanceUrl()+'/api/sn_cicd/instance_scan/suite_scan/'+strSuiteSysId+'/scoped_apps';
 	var strBody = '{ app_scope_sys_ids : ["'+grApp.sys_id+'"]}';
 	
 
@@ -40,6 +50,7 @@
 	
 	if (IsValidSysId(strUserSysId) == false)
 	{
+		Error('The temporary technical user could not be created!');
 		return false;
 	}
 
@@ -49,24 +60,26 @@
 		request.setEndpoint(strUrl);
 		request.setHttpMethod('POST');
 		request.setRequestHeader("Accept","application/json");
-		request.setBasicAuth('technical.devTools.instancescan.'+strUserNamePostFix,strPassword);
+		request.setBasicAuth('technical.devtools.instancescan.'+strUserNamePostFix,strPassword);
 		request.setRequestBody(strBody);
 		var response = request.execute();
 	}
 	catch (e)
 	{
+		Error('Failed to perform the REST API call!');
 		return false;
 	}
 
-	
 	var grUserDelete = GetUserRecord(strUserSysId);
 	GlideRecordDelete(grUserDelete);
 	
 	var strResponse = response.getBody();
 	var result = ParseJson(strResponse);
+
 	var strProgressSysId = GetValue(result,'result','links','progress','id');
 	if (IsValidSysId(strProgressSysId) == false)
 	{
+		Error('Could not receive progress id');
 		return false;
 	}
 	
@@ -78,12 +91,17 @@
 	var bProgress = true;
 	while (bProgress == true)
 	{
+		var strMessage = '';
 		if (grProgress.get(strProgressSysId))
 		{
 			var strState = GetStringValue(grProgress.state);  
 			if (strState != 'starting' && strState != 'running')
 			{
 				bProgress = false;
+			}
+			else
+			{
+				strMessage = GetStringValue(grProgress.message);  
 			}
 		}
 		else
@@ -95,9 +113,24 @@
 		if (nNewSecondsPassed > nSecondsPassed + 1)
 		{
 			nSecondsPassed = nNewSecondsPassed; 
-					
-			progresstracker.SetPercentageProgress(GetIntegerValue((nSecondsPassed / nEstimatedSeconds) * 90));
-			var strText = 'Scan running for '+nSecondsPassed+' seconds.';
+			
+			var nPercentage = 0;
+			var grExecutionTracker = new GlideRecord('sys_execution_tracker');
+			grExecutionTracker.addQuery('type','=','instance_scan');
+			grExecutionTracker.addQuery('state','=','1');
+			grExecutionTracker.query();
+			if (grExecutionTracker.next() == true)
+			{
+				nPercentage = GetIntegerValue(grExecutionTracker.percent_complete);
+			}
+			progresstracker.SetPercentageProgress(nPercentage);
+
+			var strText = strMessage; 
+			if (strText != '')
+			{
+				strText += '<br/>';
+			}
+			strText += 'Scan running for '+nSecondsPassed+' seconds.';
 			progresstracker.SetText(strText);
 		}
 	}
@@ -107,9 +140,10 @@
 	grScanResult.query();
 	if (grScanResult.next() == false)
 	{
+		Error('Could not load scan results!');
 		return false;
 	}
-	
+
 	var grSuiteExec = new GlideRecord('scan_suite_execution');
 	grSuiteExec.addQuery('result','=',grScanResult.sys_id);
 	grSuiteExec.query();
@@ -120,7 +154,8 @@
 	}
 	
 	
-	var scanresults =  InstanceScanGetScanResults(grScanResult.sys_id,bDetailed);
+	var scanresults = InstanceScanGetScanResults(grScanResult.sys_id,bDetailed);
+	scanresults.app_name = GetStringValue(grApp.name);
 	progresstracker.SetResult(scanresults,true,'Scan completed');
 	return scanresults;
 }]]></script>
@@ -128,13 +163,25 @@
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2022-11-08 09:18:56</sys_created_on>
         <sys_id>9f5aef5ddb4f59106a03dad1f39619f6</sys_id>
-        <sys_mod_count>67</sys_mod_count>
+        <sys_mod_count>102</sys_mod_count>
         <sys_name>InstanceScanSuiteOnApp</sys_name>
         <sys_package display_value="DevTools" source="x_snc_devtools">d689f6901bd38450a89720a8ec4bcbfd</sys_package>
-        <sys_policy>read</sys_policy>
+        <sys_policy/>
         <sys_scope display_value="DevTools">d689f6901bd38450a89720a8ec4bcbfd</sys_scope>
         <sys_update_name>sys_script_include_9f5aef5ddb4f59106a03dad1f39619f6</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2023-11-29 07:54:57</sys_updated_on>
+        <sys_updated_on>2025-08-18 09:59:53</sys_updated_on>
+        <x_snc_devtools_sys_ui_script/>
     </sys_script_include>
+    <sys_es_latest_script action="INSERT_OR_UPDATE">
+        <id>9f5aef5ddb4f59106a03dad1f39619f6</id>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2025-04-30 07:27:33</sys_created_on>
+        <sys_id>ad1e2e909311e610959b7fda2bba10d2</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2025-04-30 07:27:33</sys_updated_on>
+        <table>sys_script_include</table>
+        <use_es_latest>false</use_es_latest>
+    </sys_es_latest_script>
 </record_update>

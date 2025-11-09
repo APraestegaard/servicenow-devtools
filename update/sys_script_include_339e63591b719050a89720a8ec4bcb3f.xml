@@ -6,16 +6,19 @@
         <caller_access/>
         <client_callable>false</client_callable>
         <description>This script installs DevTools</description>
+        <mobile_callable>false</mobile_callable>
         <name>AppInstall</name>
+        <sandbox_callable>false</sandbox_callable>
         <script><![CDATA[function AppInstall()
 {	
 	var installer = new InstallerAPI(GetAppName('x_snc_devtools'));
 
-	installer.SetProperty('x_snc_devtools.logging.verbosity','debug');
-	
 	installer.SetProperty('sn_g_app_creator.allow_global','true');
 	
 	installer.SetProperty('glide.record.legacy_cross_scope_access_policy_in_script','true');
+
+	// ZURICH: If glide.scan.queue.enabled is set to true, some scan operations fail completely
+	installer.SetProperty('glide.scan.queue.enabled','false');
 	
 	installer.InstallGlobalSystemProperty('glide.script.block.client.globals',
 		'boolean',
@@ -31,6 +34,13 @@
 		'com.glide.apps.include_my_deletes',
 		100);
 
+	installer.RecordSetValue(
+		'UI Policy "content_css - type" is cross-scope and the stupid GUI prevents the Condition to be set properly.',
+		'sys_ui_policy',
+		'e043f4dfdb121510f359c1911596190a',
+		'conditions',
+		'type=local');
+
 	installer.DeleteView('devtoolsinstall');
 	installer.DeleteView('exp_dtmpincidentadmin');
 
@@ -40,6 +50,9 @@
 	installer.ActivateBusinessRule('ccaf8afec3302200f7d1ca3adfba8f14',false);
 	installer.ActivateClientScript('5d19f53ac3302200f7d1ca3adfba8f36',false);
 	installer.ActivateClientScript('3c5ffd7ac3302200f7d1ca3adfba8f22',false);
+
+	// Disable the business rule "Abort delete on shaerdservice.worker" (introduced in Xanadu) that prevents a specific technical user to be renamed - which clashes with the recommended naming convention for technical users
+	installer.ActivateBusinessRule('78d255d8534731106e33ddeeff7b128e',false);
 	
 	// Disable the OOTB "Execute Now" UI action on sysauto_script - so that DevTools' UI action can take its part
 	installer.ActivateUiAction('31db53d1a9fe07590053c90a05c57084',false);
@@ -52,12 +65,17 @@
 	
 	// Disable the "Save" UI action on table rm_story to avoid duplicate buttons
 	installer.ActivateUiAction('6b85b644c3e003004e771bdef1d3aebb',false);
+
+	// Disable the "Copy Test Suite" UI action on table sys_atf_test_suite 
+	installer.ActivateUiAction('90f16745e7223300571927d8d2f6a969',false);	
 	
 	
 	// Unhide the field class "UI Action List" (glide_action_list) so that it can be used by developers
 	installer.ShowFieldClass('glide_action_list',true);
+	
 	// Unhide the field class "Email" (email) so that it can be used by developers
 	installer.ShowFieldClass('email',true);
+	
 	// Unhide the field class "Related Tags" (related_tags) so that it can be used by developers
 	installer.ShowFieldClass('related_tags',true);
 	
@@ -76,7 +94,25 @@
 		'list_banner_button',true);
 	
 	// Add description field to the business rule default view
-	installer.InsertFieldToFormSection('2f66abdbc0a801640136e10e1309efaf','description',5);
+	installer.DefineFormSection(
+		x_snc_devtools.GetFormSectionRecord(
+			x_snc_devtools.GetViewRecord('Default view'),
+			'sys_script',
+			''),
+		[
+			'0cd0481fcb510200a0461a7a734c9cb8',
+			'.begin_split',
+			'name',
+			'collection',
+			'priority',
+			'description',
+			'.split',
+			'sys_scope',
+			'access',
+			'active',
+			'advanced',
+			'is_rest'
+		]);
 	
 	// Deactivate the view rule to enforce the "global" view for global scoped apps
 	installer.ActivateViewRule('46427f829333310063d3941e867ffb16',false);
@@ -95,6 +131,26 @@
 				'sys_script_client','d89da8f3c3432100b9e7ff9c02d3ae91','script',strScriptNew,true);
 		}
 	}
+
+	// Fix for database views
+	installer.RecordSetValue(
+		'Fix the table ordering for database view "incident_sla" for table "task_sla"',
+		'sys_db_view_table',
+		'641d911c0a0a0b4b0076aaeced5fd5f1',
+		'order','101',
+		true);
+
+	// CMDB 
+	installer.DiscoverySourceInsertOrUpdate('DevTools','devtools');
+
+	// Generative AI Controller
+	// Deactivate the ACL that prevents non-maint users from seeing all fields of a One Extend Capability (bug)
+	installer.ActivateACL('12eff632438302106c3603295bb8f242',false);
+
+	// Make tables configurable
+	installer.SetTableValue('sys_script_include','configuration_access',true);
+	installer.SetTableValue('sys_ui_script','configuration_access',true);
+	installer.SetTableValue('sys_script','configuration_access',true);
 	
 	return installer.Finish();
 }]]></script>
@@ -102,13 +158,25 @@
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2020-07-03 21:35:10</sys_created_on>
         <sys_id>339e63591b719050a89720a8ec4bcb3f</sys_id>
-        <sys_mod_count>88</sys_mod_count>
+        <sys_mod_count>114</sys_mod_count>
         <sys_name>AppInstall</sys_name>
-        <sys_package display_value="DevTools WORK IN PROGRESS" source="x_snc_devtools">d689f6901bd38450a89720a8ec4bcbfd</sys_package>
-        <sys_policy>read</sys_policy>
-        <sys_scope display_value="DevTools WORK IN PROGRESS">d689f6901bd38450a89720a8ec4bcbfd</sys_scope>
+        <sys_package display_value="DevTools" source="x_snc_devtools">d689f6901bd38450a89720a8ec4bcbfd</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="DevTools">d689f6901bd38450a89720a8ec4bcbfd</sys_scope>
         <sys_update_name>sys_script_include_339e63591b719050a89720a8ec4bcb3f</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2023-11-27 16:51:07</sys_updated_on>
+        <sys_updated_on>2025-09-30 09:33:00</sys_updated_on>
+        <x_snc_devtools_sys_ui_script/>
     </sys_script_include>
+    <sys_es_latest_script action="INSERT_OR_UPDATE">
+        <id>339e63591b719050a89720a8ec4bcb3f</id>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2025-04-24 16:00:09</sys_created_on>
+        <sys_id>c8e96d2e93c9aa10959b7fda2bba109c</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2025-04-24 16:00:09</sys_updated_on>
+        <table>sys_script_include</table>
+        <use_es_latest>false</use_es_latest>
+    </sys_es_latest_script>
 </record_update>

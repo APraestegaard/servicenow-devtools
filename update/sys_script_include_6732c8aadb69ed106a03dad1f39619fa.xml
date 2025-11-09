@@ -6,8 +6,27 @@
         <caller_access/>
         <client_callable>false</client_callable>
         <description>Interface to the GitLab API.&#13;
-Please note that this component is EXPERIMENTAL and UNSTABLE and the interface might be subject to change without an increase of DevTools major version!</description>
+|&#13;
+Methods:&#13;
+* initialize()&#13;
+* SetCredential()&#13;
+* SetBasicAuth()&#13;
+* SetMidServer()&#13;
+* SetApiUrl()&#13;
+* GetApiUrl()&#13;
+* Error()&#13;
+* GetRequestCount()&#13;
+* Request()&#13;
+* GetPublicProjects()&#13;
+* GetProjectPath()&#13;
+* GetTreePath()&#13;
+* GetBranchesFromRepo()&#13;
+* GetFilesFromBranch()&#13;
+* GetFile()&#13;
+* ProtectBranchReadOnly()</description>
+        <mobile_callable>false</mobile_callable>
         <name>GitLabAPI</name>
+        <sandbox_callable>false</sandbox_callable>
         <script><![CDATA[var GitLabAPI = Class.create();
 GitLabAPI.prototype = {
 	
@@ -15,14 +34,26 @@ GitLabAPI.prototype = {
 	{
 		this.SetApiUrl(strApiUrl);
 		this.m_basicauth = { username: '', password: ''};
+		this.m_strMidServer = '';
 		this.m_nRequestCount = 0;
     },
 	
 	SetCredential: function(strCredSysId)
 	{
 		var provider = new sn_cc.StandardCredentialsProvider();
+		if (IsObject(provider) == false)
+		{
+			LogError('GitLabAPI::SetCredential failed to initialize sn_cc.StandardCredentialsProvider.');
+			return;
+		}
 		var credential = provider.getCredentialByID(strCredSysId);
 		
+		if (IsObject(credential) == false)
+		{
+			LogError('GitLabAPI::SetCredential getCredentialByID("'+strCredSysId+'") failed.');
+			return;
+		}
+
 		this.SetBasicAuth(
 			credential.getAttribute("user_name"),
 			credential.getAttribute("password"));
@@ -35,6 +66,11 @@ GitLabAPI.prototype = {
 			password: strPassword
 		};
 	},
+
+	SetMidServer: function(strMidServer)
+	{
+		this.m_strMidServer = GetStringValue(strMidServer);
+	},	
 	
 	SetApiUrl: function(strApiUrl)
 	{
@@ -59,7 +95,7 @@ GitLabAPI.prototype = {
 	
 	Error: function(strMessage)
 	{
-		LogError('GitLabAPI: ERROR: '+strMessage);
+		LogError('GitLabAPI: ERROR:\n\n'+strMessage);
 	},
 	
 	GetRequestCount: function()
@@ -67,8 +103,25 @@ GitLabAPI.prototype = {
 		return this.m_nRequestCount;
 	},
 	
-	Request: function(strPath)
+	Request: function(vInput)
 	{
+
+		var strPath = '';
+		if (!IsObject(vInput))
+		{
+			strPath = GetStringValue(vInput);
+		}
+		else
+		{
+			params = vInput;
+			strPath = GetStringValue(GetValue(vInput,'path'));
+			if (strPath == '')
+			{
+				LogError('GitLabAPI::Request: No path specified!');
+				return false;
+			}
+		}
+
 		this.m_nRequestCount++;
 		
 		var strUrl = this.GetApiUrl()+strPath;
@@ -82,14 +135,45 @@ GitLabAPI.prototype = {
 					}
 				]
 		};
+
+		if (this.m_strMidServer != '')
+		{
+			params.mid_server = this.m_strMidServer;
+		}	
 		
+		var strMethod = GetStringValue(GetValue(vInput,'method'));
+		if (strMethod != '')
+		{
+			params.method = strMethod;
+		}
+
+		var strRequestBody = GetStringValue(GetValue(vInput,'requestbody'));
+		if (strRequestBody != '')
+		{
+			params.requestbody = strRequestBody;
+		}	
+
 		var strResponse = HttpRequest(params);
 		var response = ParseJson(strResponse);
 		
 		var strErrorMessage = GetStringValue(GetValue(response,'error'));
+		
+		if (strErrorMessage == '')
+		{
+			// The GitLab REST API sometimes reports errors in "error", sometimes in "message". 
+			var strMessage = GetStringValue(GetValue(response,'message'));
+			if (strMessage != '')
+			{
+				strErrorMessage = strMessage;
+			}
+		}
+		
 		if (strErrorMessage != '')
 		{
-			this.Error('GitLab API returned: "'+RenderValue(strErrorMessage)+'"');
+			this.Error(
+				'GitLab API returned: "'+strErrorMessage+'"\n\n'
+				+'Url: '+strUrl+'\n\n'
+				+'Response: '+RenderValue(response));
 			return false;
 		}
 		return response;
@@ -117,7 +201,29 @@ GitLabAPI.prototype = {
 	GetBranchesFromRepo: function(strProject)
 	{
 		strProject = this.GetProjectPath(strProject);
-		return this.Request('projects/'+strProject+'/repository/branches?per_page=100');
+		var aBranches = false;
+		var bContinue = true;
+		var nPage = 1;
+		var nPerPage = 100;
+		while (bContinue == true)
+		{
+			var aMoreBranches = this.Request(
+				'projects/'+strProject+'/repository/branches?per_page='+nPerPage+'&page='+nPage);
+			if (aMoreBranches != false)
+			{
+				aBranches = ArrayAppend(aBranches,aMoreBranches);
+				if (aMoreBranches.length < nPerPage)
+				{
+					bContinue = false;
+				}
+			}
+			else
+			{
+				bContinue = false;
+			}
+			nPage++;
+		}
+		return aBranches;
 	},
 
 	GetFilesFromBranch: function(strProject, strBranch, strPath)
@@ -169,6 +275,34 @@ GitLabAPI.prototype = {
 		return response;
 	},	
 
+	ProtectBranchReadOnly: function(strProject, strBranch)
+	{
+		// https://docs.gitlab.com/ee/api/protected_branches.html#protect-repository-branches
+		
+		strProject = this.GetProjectPath(strProject);
+		strBranch = GetStringValue(strBranch);
+
+		var strPath = 'projects/'+strProject+'/protected_branches?';
+
+		strPath += 'name=' + strBranch;
+		strPath += '&push_access_level=40';
+		strPath += '&merge_access_level=40';
+		strPath += '&unprotect_access_level=40'; 
+
+		var response = this.Request(
+			{
+				path: strPath,
+				method: 'post' 
+			});
+
+		if (response == false)
+		{
+			this.Error('ProtectBranchReadOnly: Request failed.');
+			return false;
+		}
+
+		return true;
+	},
 
 	
     type: 'GitLabAPI'
@@ -177,13 +311,14 @@ GitLabAPI.prototype = {
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2023-03-15 20:14:10</sys_created_on>
         <sys_id>6732c8aadb69ed106a03dad1f39619fa</sys_id>
-        <sys_mod_count>23</sys_mod_count>
+        <sys_mod_count>57</sys_mod_count>
         <sys_name>GitLabAPI</sys_name>
-        <sys_package display_value="DevTools WORK IN PROGRESS" source="x_snc_devtools">d689f6901bd38450a89720a8ec4bcbfd</sys_package>
-        <sys_policy>read</sys_policy>
-        <sys_scope display_value="DevTools WORK IN PROGRESS">d689f6901bd38450a89720a8ec4bcbfd</sys_scope>
+        <sys_package display_value="DevTools" source="x_snc_devtools">d689f6901bd38450a89720a8ec4bcbfd</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="DevTools">d689f6901bd38450a89720a8ec4bcbfd</sys_scope>
         <sys_update_name>sys_script_include_6732c8aadb69ed106a03dad1f39619fa</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2023-07-01 20:52:28</sys_updated_on>
+        <sys_updated_on>2025-08-24 10:22:52</sys_updated_on>
+        <x_snc_devtools_sys_ui_script/>
     </sys_script_include>
 </record_update>

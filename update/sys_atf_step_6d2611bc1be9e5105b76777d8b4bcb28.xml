@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?><record_update table="sys_atf_step">
     <sys_atf_step action="INSERT_OR_UPDATE">
         <active>true</active>
+        <callable_outputs/>
         <copied_from/>
         <description>Run Server Side Validation Script</description>
         <display_name>Run Server Side Script</display_name>
@@ -22,7 +23,7 @@
         <sys_updated_by>admin</sys_updated_by>
         <sys_updated_on>2023-06-16 11:46:28</sys_updated_on>
         <table/>
-        <test display_value="DevTools  - ParseXml">42161d7c1be9e5105b76777d8b4bcb6e</test>
+        <test display_value="DevTools - ParseXml">42161d7c1be9e5105b76777d8b4bcb6e</test>
         <timeout/>
         <warning_message/>
     </sys_atf_step>

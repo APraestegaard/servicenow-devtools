@@ -6,7 +6,9 @@
         <caller_access/>
         <client_callable>false</client_callable>
         <description>Performs an instance scan point scan on a specific record</description>
+        <mobile_callable>false</mobile_callable>
         <name>InstanceScanPointScan</name>
+        <sandbox_callable>false</sandbox_callable>
         <script><![CDATA[function InstanceScanPointScan(strTable, strRecordSysId, bDetailed)
 {
 	if (InstanceScanIsRunning() == true)
@@ -41,23 +43,7 @@
 		return false;
 	}
 	
-	var grProgress = new GlideRecord('sys_progress_worker');
-	var bProgress = true;
-	while (bProgress == true)
-	{
-		if (grProgress.get(strProgressSysId))
-		{
-			var strState = GetStringValue(grProgress.state);  
-			if (strState != 'starting' && strState != 'running')
-			{
-				bProgress = false;
-			}
-		}
-		else
-		{
-			bProgress = false;
-		}
-	}
+	WaitForWorker(strProgressSysId,1);
 	
 	var grScanResult = new GlideRecord('scan_result');
 	grScanResult.addQuery('progress_id','=',strProgressSysId);
@@ -73,13 +59,14 @@
         <sys_created_by>admin</sys_created_by>
         <sys_created_on>2022-06-10 17:51:47</sys_created_on>
         <sys_id>8e853b7cdb44d510bcced03cd396190f</sys_id>
-        <sys_mod_count>22</sys_mod_count>
+        <sys_mod_count>25</sys_mod_count>
         <sys_name>InstanceScanPointScan</sys_name>
-        <sys_package display_value="DevTools WORK IN PROGRESS" source="x_snc_devtools">d689f6901bd38450a89720a8ec4bcbfd</sys_package>
-        <sys_policy>read</sys_policy>
-        <sys_scope display_value="DevTools WORK IN PROGRESS">d689f6901bd38450a89720a8ec4bcbfd</sys_scope>
+        <sys_package display_value="DevTools" source="x_snc_devtools">d689f6901bd38450a89720a8ec4bcbfd</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="DevTools">d689f6901bd38450a89720a8ec4bcbfd</sys_scope>
         <sys_update_name>sys_script_include_8e853b7cdb44d510bcced03cd396190f</sys_update_name>
         <sys_updated_by>admin</sys_updated_by>
-        <sys_updated_on>2022-12-02 21:53:48</sys_updated_on>
+        <sys_updated_on>2024-11-08 14:56:50</sys_updated_on>
+        <x_snc_devtools_sys_ui_script/>
     </sys_script_include>
 </record_update>
